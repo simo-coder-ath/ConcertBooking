@@ -18,4 +18,10 @@ public interface CommandeRepository extends JpaRepository<Commande, Long> {
             StatutCommande statut,
             OffsetDateTime date
     );
+
+
+ 
+
+
+
 }

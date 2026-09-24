@@ -19,4 +19,20 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
             Long evenementId,
             Long categoriePrixId
     );
+
+
+
+
+
+
+
+
+
+      Optional<Place> findBySiegeId(Long siegeId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Place> findByIdForUpdate(Long id);
+
+
+    
 }
