@@ -1,6 +1,7 @@
 package com.example.concert_booking_api.app.reservation.dto;
 
 import com.example.concert_booking_api.dao.entity.Commande;
+import com.example.concert_booking_api.dao.entity.LigneCommande;
 import com.example.concert_booking_api.dao.enums.StatutCommande;
 
 import java.math.BigDecimal;
@@ -21,17 +22,23 @@ public record ReservationResponse(
 
 ) {
 
-    public static ReservationResponse from(Commande commande) {
+    public static ReservationResponse from(
+            Commande commande,
+            List<LigneCommande> lignes
+    ) {
 
-        List<Long> placeIds = commande.getLignes()
+        List<Long> placeIds = lignes
                 .stream()
-                .map(ligne -> ligne.getPlace().getId())
+                .map(ligne ->
+                        ligne.getPlace().getId()
+                )
                 .toList();
 
         Long evenementId = null;
 
-        if (!commande.getLignes().isEmpty()) {
-            evenementId = commande.getLignes()
+        if (!lignes.isEmpty()) {
+
+            evenementId = lignes
                     .get(0)
                     .getPlace()
                     .getEvenement()

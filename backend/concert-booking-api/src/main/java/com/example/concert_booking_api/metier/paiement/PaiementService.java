@@ -1,5 +1,7 @@
 package com.example.concert_booking_api.metier.paiement;
 
+import com.example.concert_booking_api.core.exception.BusinessException;
+import com.example.concert_booking_api.core.exception.ResourceNotFoundException;
 import com.example.concert_booking_api.dao.entity.Commande;
 import com.example.concert_booking_api.dao.entity.Facture;
 import com.example.concert_booking_api.dao.entity.LigneCommande;
@@ -41,11 +43,6 @@ public class PaiementService {
         this.paymentProviderClient = paymentProviderClient;
     }
 
-
-
-
-
-
     public Facture payerCommande(
             Long commandeId,
             Long utilisateurId,
@@ -53,127 +50,132 @@ public class PaiementService {
             String paymentToken
     ) {
 
-        Commande commande = trouverCommande(commandeId);
+        Commande commande =
+                trouverCommande(commandeId);
 
-        verifierProprietaire(commande, utilisateurId);
-
-        verifierCommandePayable(commande);
-
-        verifierMontantDemande(commande, montantDemande);
-
-        PaymentResult resultat = paymentProviderClient.confirmerPaiement(
-                paymentToken,
-                commande.getMontantTotal()
+        verifierProprietaire(
+                commande,
+                utilisateurId
         );
 
+        verifierCommandePayable(
+                commande
+        );
+
+        verifierMontantDemande(
+                commande,
+                montantDemande
+        );
+
+        PaymentResult resultat =
+                paymentProviderClient.confirmerPaiement(
+                        paymentToken,
+                        commande.getMontantTotal()
+                );
+
         if (!resultat.succes()) {
-            traiterEchecPaiement(commande, resultat);
+            traiterEchecPaiement(
+                    commande,
+                    resultat
+            );
         }
 
-        verifierResultatPaiement(commande, resultat);
+        verifierResultatPaiement(
+                commande,
+                resultat
+        );
 
-        return traiterPaiementConfirme(commande, resultat);
+        return traiterPaiementConfirme(
+                commande,
+                resultat
+        );
     }
 
-
-
-   
     private void verifierProprietaire(
             Commande commande,
             Long utilisateurId
     ) {
 
         if (utilisateurId == null) {
-            throw new IllegalArgumentException(
+
+            throw new BusinessException(
                     "L'identifiant utilisateur est obligatoire."
             );
         }
 
         if (commande.getUtilisateur() == null
-                || !commande.getUtilisateur().getId().equals(utilisateurId)) {
+                || commande.getUtilisateur().getId() == null
+                || !commande.getUtilisateur()
+                        .getId()
+                        .equals(utilisateurId)) {
 
-            throw new IllegalStateException(
-                    "Cette commande n'appartient pas à cet utilisateur."
+            throw new BusinessException(
+                    "Cette commande n'appartient pas "
+                            + "à cet utilisateur."
             );
         }
     }
 
-
-
-
-
-
-
-
-    private void verifierCommandePayable(Commande commande) {
+    private void verifierCommandePayable(
+            Commande commande
+    ) {
 
         if (commande.getStatut()
                 != StatutCommande.EN_ATTENTE_DE_PAIEMENT) {
 
-            throw new IllegalStateException(
-                    "Cette commande n'est plus en attente de paiement."
+            throw new BusinessException(
+                    "Cette commande n'est plus "
+                            + "en attente de paiement."
             );
         }
 
         if (commande.getExpiresAt() == null) {
-            throw new IllegalStateException(
-                    "La date d'expiration de la commande est invalide."
+
+            throw new BusinessException(
+                    "La date d'expiration de la commande "
+                            + "est invalide."
             );
         }
 
-        if (!commande.getExpiresAt().isAfter(OffsetDateTime.now())) {
-            throw new IllegalStateException(
+        if (!commande.getExpiresAt()
+                .isAfter(OffsetDateTime.now())) {
+
+            throw new BusinessException(
                     "La commande a expiré."
             );
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-   
     private void verifierMontantDemande(
             Commande commande,
             BigDecimal montantDemande
     ) {
 
         if (montantDemande == null) {
-            throw new IllegalArgumentException(
-                    "Le montant du paiement est obligatoire."
+
+            throw new BusinessException(
+                    "Le montant du paiement "
+                            + "est obligatoire."
             );
         }
 
         if (commande.getMontantTotal() == null) {
-            throw new IllegalStateException(
-                    "Le montant de la commande est invalide."
+
+            throw new BusinessException(
+                    "Le montant de la commande "
+                            + "est invalide."
             );
         }
 
-        if (commande.getMontantTotal().compareTo(montantDemande) != 0) {
-            throw new IllegalArgumentException(
-                    "Le montant du paiement ne correspond pas au montant de la commande."
+        if (commande.getMontantTotal()
+                .compareTo(montantDemande) != 0) {
+
+            throw new BusinessException(
+                    "Le montant du paiement ne correspond "
+                            + "pas au montant de la commande."
             );
         }
     }
-
-
-
-
-
-
-
-
-
-
 
     private void verifierResultatPaiement(
             Commande commande,
@@ -181,133 +183,142 @@ public class PaiementService {
     ) {
 
         if (resultat == null) {
-            throw new IllegalStateException(
-                    "Le service de paiement n'a retourné aucun résultat."
+
+            throw new BusinessException(
+                    "Le service de paiement n'a retourné "
+                            + "aucun résultat."
             );
         }
 
         if (resultat.transactionId() == null
                 || resultat.transactionId().isBlank()) {
 
-            throw new IllegalStateException(
-                    "Le provider n'a pas fourni d'identifiant de transaction."
+            throw new BusinessException(
+                    "Le provider n'a pas fourni "
+                            + "d'identifiant de transaction."
             );
         }
 
         if (resultat.montant() == null
-                || commande.getMontantTotal().compareTo(resultat.montant()) != 0) {
+                || commande.getMontantTotal()
+                        .compareTo(resultat.montant()) != 0) {
 
-            throw new IllegalStateException(
-                    "Le montant confirmé par le provider ne correspond pas à la commande."
+            throw new BusinessException(
+                    "Le montant confirmé par le provider "
+                            + "ne correspond pas à la commande."
+            );
+        }
+
+        if (resultat.provider() == null
+                || resultat.provider().isBlank()) {
+
+            throw new BusinessException(
+                    "Le provider de paiement est invalide."
             );
         }
     }
-
-
-
-
-
-
-
-
-
-
-
 
     private Facture traiterPaiementConfirme(
             Commande commande,
             PaymentResult resultat
     ) {
 
-
-
         Facture factureExistante =
-                factureRepository.findByTransactionId(
-                        resultat.transactionId()
-                ).orElse(null);
+                factureRepository
+                        .findByTransactionId(
+                                resultat.transactionId()
+                        )
+                        .orElse(null);
 
         if (factureExistante != null) {
             return factureExistante;
         }
 
         List<LigneCommande> lignes =
-                ligneCommandeRepository.findByCommandeId(commande.getId());
+                ligneCommandeRepository
+                        .findByCommandeId(
+                                commande.getId()
+                        );
 
         if (lignes.isEmpty()) {
-            throw new IllegalStateException(
-                    "La commande ne contient aucune place."
+
+            throw new BusinessException(
+                    "La commande ne contient "
+                            + "aucune place."
             );
         }
 
-    
         for (LigneCommande ligne : lignes) {
 
-            Place place = placeRepository.findByIdForUpdate(
-                    ligne.getPlace().getId()
-            ).orElseThrow(() ->
-                    new IllegalStateException(
-                            "Place introuvable : "
-                                    + ligne.getPlace().getId()
-                    )
-            );
+            if (ligne.getPlace() == null
+                    || ligne.getPlace().getId() == null) {
 
-            if (place.getStatut() != StatutPlace.VERROUILLEE) {
-                throw new IllegalStateException(
-                        "La place " + place.getId()
+                throw new BusinessException(
+                        "Une ligne de commande "
+                                + "ne possède pas de place valide."
+                );
+            }
+
+            Place place =
+                    placeRepository
+                            .findByIdForUpdate(
+                                    ligne.getPlace().getId()
+                            )
+                            .orElseThrow(() ->
+                                    new ResourceNotFoundException(
+                                            "Place introuvable : "
+                                                    + ligne.getPlace()
+                                                    .getId()
+                                    )
+                            );
+
+            if (place.getStatut()
+                    != StatutPlace.VERROUILLEE) {
+
+                throw new BusinessException(
+                        "La place "
+                                + place.getId()
                                 + " n'est plus verrouillée."
                 );
             }
 
-            place.setStatut(StatutPlace.RESERVEE);
-            placeRepository.save(place);
-        }
-
-  
-        for (LigneCommande ligne : lignes) {
-
-            Place place = placeRepository.findByIdForUpdate(
-                    ligne.getPlace().getId()
-            ).orElseThrow(() ->
-                    new IllegalStateException(
-                            "Place introuvable."
-                    )
+            place.setStatut(
+                    StatutPlace.VENDUE
             );
 
-            if (place.getStatut() != StatutPlace.RESERVEE) {
-                throw new IllegalStateException(
-                        "La place " + place.getId()
-                                + " n'est pas réservée."
-                );
-            }
-
-            place.setStatut(StatutPlace.VENDUE);
             placeRepository.save(place);
         }
 
-   
-        commande.setStatut(StatutCommande.PAYEE);
+        commande.setStatut(
+                StatutCommande.PAYEE
+        );
+
         commandeRepository.save(commande);
 
-      
         Facture facture = new Facture();
 
         facture.setCommande(commande);
-        facture.setMontantRegle(resultat.montant());
-        facture.setPaymentProvider(resultat.provider());
-        facture.setTransactionId(resultat.transactionId());
-        facture.setStatutPaiement("PAYE");
 
-     
+        facture.setMontantRegle(
+                resultat.montant()
+        );
+
+        facture.setPaymentProvider(
+                resultat.provider()
+        );
+
+        facture.setTransactionId(
+                resultat.transactionId()
+        );
+
+        facture.setStatutPaiement(
+                "PAYE"
+        );
+
         facture.setPdfTicketUrl(null);
 
         return factureRepository.save(facture);
     }
-
-   
-
-
-
-
 
     private void traiterEchecPaiement(
             Commande commande,
@@ -315,73 +326,77 @@ public class PaiementService {
     ) {
 
         List<LigneCommande> lignes =
-                ligneCommandeRepository.findByCommandeId(
-                        commande.getId()
-                );
+                ligneCommandeRepository
+                        .findByCommandeId(
+                                commande.getId()
+                        );
 
-      
         for (LigneCommande ligne : lignes) {
 
-            Place place = placeRepository.findByIdForUpdate(
-                    ligne.getPlace().getId()
-            ).orElse(null);
+            if (ligne.getPlace() == null
+                    || ligne.getPlace().getId() == null) {
+                continue;
+            }
+
+            Place place =
+                    placeRepository
+                            .findByIdForUpdate(
+                                    ligne.getPlace().getId()
+                            )
+                            .orElse(null);
 
             if (place == null) {
                 continue;
             }
 
-            if (place.getStatut() == StatutPlace.VERROUILLEE) {
-                place.setStatut(StatutPlace.DISPONIBLE);
+            if (place.getStatut()
+                    == StatutPlace.VERROUILLEE) {
+
+                place.setStatut(
+                        StatutPlace.DISPONIBLE
+                );
+
                 placeRepository.save(place);
             }
         }
 
-
-
-        commande.setStatut(StatutCommande.ECHOUEE);
-        commandeRepository.save(commande);
-
-        throw new IllegalStateException(
-                "Le paiement a échoué : "
-                        + resultat.message()
+        commande.setStatut(
+                StatutCommande.ECHOUEE
         );
 
+        commandeRepository.save(commande);
 
+        String message =
+                resultat != null
+                        && resultat.message() != null
+                        && !resultat.message().isBlank()
+                        ? resultat.message()
+                        : "Le paiement a échoué.";
 
+        throw new BusinessException(
+                "Le paiement a échoué : " + message
+        );
     }
 
-
-
-
-
-
-
-
-
-
-    private Commande trouverCommande(Long commandeId) {
+    @Transactional(readOnly = true)
+    private Commande trouverCommande(
+            Long commandeId
+    ) {
 
         if (commandeId == null) {
-            throw new IllegalArgumentException(
-                    "L'identifiant de la commande est obligatoire."
+
+            throw new BusinessException(
+                    "L'identifiant de la commande "
+                            + "est obligatoire."
             );
         }
 
-        return commandeRepository.findById(commandeId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Commande introuvable."
-                        )
-                );
-
-
-
+        return commandeRepository.findById(
+                commandeId
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "Commande introuvable."
+                )
+        );
     }
-
-
-
-
-
-
-    
 }

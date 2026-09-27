@@ -47,7 +47,6 @@ public class SiegeController {
 
         Siege siege = siegeService.modifierSiege(
                 id,
-                request.salleId(),
                 request.rang(),
                 request.numero(),
                 request.zone()
@@ -63,7 +62,8 @@ public class SiegeController {
             @PathVariable Long id
     ) {
 
-        Siege siege = siegeService.trouverSiege(id);
+        Siege siege =
+                siegeService.trouverSiege(id);
 
         return ResponseEntity.ok(
                 SiegeResponse.from(siege)
@@ -75,11 +75,12 @@ public class SiegeController {
             @PathVariable Long salleId
     ) {
 
-        List<SiegeResponse> sieges = siegeService
-                .listerSiegesParSalle(salleId)
-                .stream()
-                .map(SiegeResponse::from)
-                .toList();
+        List<SiegeResponse> sieges =
+                siegeService
+                        .listerSiegesParSalle(salleId)
+                        .stream()
+                        .map(SiegeResponse::from)
+                        .toList();
 
         return ResponseEntity.ok(sieges);
     }
@@ -94,5 +95,3 @@ public class SiegeController {
         return ResponseEntity.noContent().build();
     }
 }
-
-

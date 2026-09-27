@@ -1,5 +1,7 @@
 package com.example.concert_booking_api.metier.siege;
 
+import com.example.concert_booking_api.core.exception.BusinessException;
+import com.example.concert_booking_api.core.exception.ResourceNotFoundException;
 import com.example.concert_booking_api.dao.entity.Place;
 import com.example.concert_booking_api.dao.entity.Salle;
 import com.example.concert_booking_api.dao.entity.Siege;
@@ -31,20 +33,12 @@ public class SiegeService {
         this.placeRepository = placeRepository;
     }
 
-
-
-
-
-
-
     public Siege creerSiege(
             Long salleId,
             String rang,
             String numero,
             String zone
     ) {
-
-
 
         Salle salle = trouverSalle(salleId);
 
@@ -53,7 +47,6 @@ public class SiegeService {
         String rangNormalise = rang.trim();
         String numeroNormalise = numero.trim();
 
-       
         Optional<Siege> siegeExistant =
                 siegeRepository.findBySalleIdAndRangAndNumero(
                         salleId,
@@ -62,7 +55,8 @@ public class SiegeService {
                 );
 
         if (siegeExistant.isPresent()) {
-            throw new IllegalStateException(
+
+            throw new BusinessException(
                     "Un siège avec le rang "
                             + rangNormalise
                             + " et le numéro "
@@ -71,26 +65,17 @@ public class SiegeService {
             );
         }
 
-
-
-
-
-
-
-
         long nombreSiegesActuels =
                 siegeRepository.findBySalleId(salleId).size();
 
         if (nombreSiegesActuels >= salle.getCapacite()) {
-            throw new IllegalStateException(
+
+            throw new BusinessException(
                     "Impossible d'ajouter ce siège : "
-                            + "la capacité maximale de la salle est atteinte."
+                            + "la capacité maximale de la salle "
+                            + "est atteinte."
             );
-
-
         }
-
-
 
         Siege siege = new Siege();
 
@@ -99,35 +84,20 @@ public class SiegeService {
         siege.setNumero(numeroNormalise);
 
         if (zone != null && !zone.trim().isEmpty()) {
-
-
             siege.setZone(zone.trim());
-
-
         } else {
-
-
             siege.setZone(null);
         }
-
 
         return siegeRepository.save(siege);
     }
 
-
-
-
     public Siege modifierSiege(
-
-
             Long siegeId,
             String rang,
             String numero,
             String zone
-
-
     ) {
-
 
         Siege siege = trouverSiege(siegeId);
 
@@ -136,17 +106,17 @@ public class SiegeService {
         String nouveauRang = rang.trim();
         String nouveauNumero = numero.trim();
 
-
-
-
         verifierModificationPossible(siege);
 
+        if (siege.getSalle() == null
+                || siege.getSalle().getId() == null) {
 
-
+            throw new BusinessException(
+                    "La salle associée au siège est invalide."
+            );
+        }
 
         Long salleId = siege.getSalle().getId();
-
-
 
         Optional<Siege> siegeExistant =
                 siegeRepository.findBySalleIdAndRangAndNumero(
@@ -155,228 +125,176 @@ public class SiegeService {
                         nouveauNumero
                 );
 
-
-
-
         if (siegeExistant.isPresent()
+                && !siegeExistant.get()
+                        .getId()
+                        .equals(siegeId)) {
 
-                && !siegeExistant.get().getId().equals(siegeId)) {
-
-
-            throw new IllegalStateException(
-
-                    "Un autre siège avec le même rang et "
-                            + "numéro existe déjà dans cette salle."
-
+            throw new BusinessException(
+                    "Un autre siège avec le même rang "
+                            + "et numéro existe déjà dans cette salle."
             );
-
         }
-
 
         siege.setRang(nouveauRang);
-
-
-
         siege.setNumero(nouveauNumero);
 
-
-
         if (zone != null && !zone.trim().isEmpty()) {
-
             siege.setZone(zone.trim());
-
         } else {
-
-
-
             siege.setZone(null);
-
-
         }
 
-
-
         return siegeRepository.save(siege);
-
-
-
     }
 
-
-
-    
-    public void supprimerSiege(Long siegeId) {
-
+    public void supprimerSiege(
+            Long siegeId
+    ) {
 
         Siege siege = trouverSiege(siegeId);
-
 
         Optional<Place> place =
                 placeRepository.findBySiegeId(siegeId);
 
-
         if (place.isPresent()) {
 
-
-            StatutPlace statut = place.get().getStatut();
-
+            StatutPlace statut =
+                    place.get().getStatut();
 
             if (statut == StatutPlace.VENDUE
                     || statut == StatutPlace.RESERVEE
                     || statut == StatutPlace.VERROUILLEE) {
 
-
-                throw new IllegalStateException(
+                throw new BusinessException(
                         "Impossible de supprimer ce siège : "
                                 + "il est utilisé par une place active."
-
                 );
-
-
             }
 
-
-
-         
-
-
-            throw new IllegalStateException(
+            throw new BusinessException(
                     "Impossible de supprimer ce siège : "
                             + "il est associé à une place."
             );
         }
 
-
-
         siegeRepository.delete(siege);
-
-
     }
 
-
-
-
     @Transactional(readOnly = true)
-    public Siege trouverSiege(Long siegeId) {
-
+    public Siege trouverSiege(
+            Long siegeId
+    ) {
 
         if (siegeId == null) {
 
-            throw new IllegalArgumentException(
-                    "L'identifiant du siège est obligatoire."
-
+            throw new BusinessException(
+                    "L'identifiant du siège "
+                            + "est obligatoire."
             );
-
-
         }
 
-
-        return siegeRepository.findById(siegeId)
-                .orElseThrow(() -> new IllegalArgumentException(
+        return siegeRepository.findById(
+                siegeId
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
                         "Siège introuvable."
-                ));
+                )
+        );
     }
 
-
-
-
-
-
-
     @Transactional(readOnly = true)
-    private Salle trouverSalle(Long salleId) {
-
-
+    public List<Siege> listerSiegesParSalle(
+            Long salleId
+    ) {
 
         if (salleId == null) {
 
-            throw new IllegalArgumentException(
-                    "L'identifiant de la salle est obligatoire."
+            throw new BusinessException(
+                    "L'identifiant de la salle "
+                            + "est obligatoire."
             );
-
         }
 
-
-        return salleRepository.findById(salleId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Salle introuvable."
-                ));
-
-
-
+        return siegeRepository.findBySalleId(
+                salleId
+        );
     }
 
+    private Salle trouverSalle(
+            Long salleId
+    ) {
 
+        if (salleId == null) {
 
+            throw new BusinessException(
+                    "L'identifiant de la salle "
+                            + "est obligatoire."
+            );
+        }
+
+        return salleRepository.findById(
+                salleId
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "Salle introuvable."
+                )
+        );
+    }
 
     private void verifierRangEtNumero(
             String rang,
             String numero
     ) {
 
+        if (rang == null
+                || rang.trim().isEmpty()) {
 
-
-        if (rang == null || rang.trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "Le rang du siège est obligatoire."
+            throw new BusinessException(
+                    "Le rang du siège "
+                            + "est obligatoire."
             );
-
-
         }
 
+        if (numero == null
+                || numero.trim().isEmpty()) {
 
-
-        if (numero == null || numero.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Le numéro du siège est obligatoire."
+            throw new BusinessException(
+                    "Le numéro du siège "
+                            + "est obligatoire."
             );
         }
     }
-
-
-
-
-    
 
     private void verifierModificationPossible(
             Siege siege
     ) {
 
-
-
         Optional<Place> place =
-                placeRepository.findBySiegeId(siege.getId());
+                placeRepository.findBySiegeId(
+                        siege.getId()
+                );
 
         if (place.isEmpty()) {
-
             return;
-
         }
 
-        StatutPlace statut = place.get().getStatut();
-
+        StatutPlace statut =
+                place.get().getStatut();
 
         if (statut == StatutPlace.VENDUE
                 || statut == StatutPlace.RESERVEE
                 || statut == StatutPlace.VERROUILLEE) {
 
-            throw new IllegalStateException(
+            throw new BusinessException(
                     "Impossible de modifier ce siège : "
                             + "il est utilisé par une place active."
             );
         }
 
-     
-
-
-        throw new IllegalStateException(
-
-
+        throw new BusinessException(
                 "Impossible de modifier ce siège : "
                         + "il est déjà associé à une place."
-
-                        
         );
     }
 }

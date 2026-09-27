@@ -1,5 +1,7 @@
 package com.example.concert_booking_api.metier.evenement;
 
+import com.example.concert_booking_api.core.exception.BusinessException;
+import com.example.concert_booking_api.core.exception.ResourceNotFoundException;
 import com.example.concert_booking_api.dao.entity.CategoriePrix;
 import com.example.concert_booking_api.dao.entity.Evenement;
 import com.example.concert_booking_api.dao.entity.Salle;
@@ -35,160 +37,100 @@ public class EvenementService {
         this.categoriePrixRepository = categoriePrixRepository;
         this.placeRepository = placeRepository;
     }
+public Evenement creerEvenement(
+        String titre,
+        String description,
+        String imageBannerUrl,
+        Long salleId,
+        OffsetDateTime dateOuvertureVentes,
+        OffsetDateTime dateEvenement,
+        RoleUtilisateur roleUtilisateur
+) {
 
-  
-    public Evenement creerEvenement(
-            String titre,
-            String description,
-            String imageBannerUrl,
-            Long salleId,
-            OffsetDateTime dateOuvertureVentes,
-            OffsetDateTime dateEvenement,
-            RoleUtilisateur roleUtilisateur
-    ) {
+    verifierDroitOrganisateur(roleUtilisateur);
 
+    verifierTitre(titre);
 
-        
-        verifierDroitOrganisateur(roleUtilisateur);
+    verifierDateEvenementPourCreation(dateEvenement);
+    verifierDateOuvertureVentes(dateOuvertureVentes, dateEvenement);
 
+    Salle salle = trouverSalle(salleId);
 
+    Evenement evenement = new Evenement();
+    evenement.setTitre(titre.trim());
+    evenement.setDescription(description != null ? description.trim() : null);
+    evenement.setImageBannerUrl(imageBannerUrl != null ? imageBannerUrl.trim() : null);
+    evenement.setSalle(salle);
+    evenement.setDateOuvertureVentes(dateOuvertureVentes);
+    evenement.setDateEvenement(dateEvenement);
+    evenement.setStatut(StatutEvenement.BROUILLON);
 
-        verifierTitre(titre);
+    return evenementRepository.save(evenement);
+}
 
 
-        verifierDateEvenementPourCreation(dateEvenement);
 
 
-        
-        verifierDateOuvertureVentes(
-                dateOuvertureVentes,
-                dateEvenement
-        );
 
 
+public Evenement modifierEvenement(
+        Long evenementId,
+        Long salleId,
+        String titre,
+        String description,
+        String imageBannerUrl,
+        OffsetDateTime dateOuvertureVentes,
+        OffsetDateTime dateEvenement,
+        RoleUtilisateur roleUtilisateur
+) {
 
+         verifierDroitOrganisateur(roleUtilisateur);
 
 
-        Salle salle = trouverSalle(salleId);
+    Evenement evenement = trouverEvenement(evenementId);
 
-        Evenement evenement = new Evenement();
+    verifierTitre(titre);
+    verifierDateEvenementPourCreation(dateEvenement);
+    verifierDateOuvertureVentes(dateOuvertureVentes, dateEvenement);
 
-        evenement.setTitre(titre.trim());
-        evenement.setDescription(
-                description != null ? description.trim() : null
-        );
+    Salle salle = trouverSalle(salleId);
 
+    evenement.setTitre(titre.trim());
+    evenement.setDescription(description != null ? description.trim() : null);
+    evenement.setImageBannerUrl(imageBannerUrl != null ? imageBannerUrl.trim() : null);
+    evenement.setSalle(salle);
+    evenement.setDateOuvertureVentes(dateOuvertureVentes);
+    evenement.setDateEvenement(dateEvenement);
 
-        evenement.setImageBannerUrl(
-                imageBannerUrl != null ? imageBannerUrl.trim() : null
-        );
+    return evenementRepository.save(evenement);
+}
 
 
-        evenement.setSalle(salle);
-        evenement.setDateOuvertureVentes(dateOuvertureVentes);
 
 
-        evenement.setDateEvenement(dateEvenement);
+ public Evenement publierEvenement(
+        Long evenementId,
+        RoleUtilisateur roleUtilisateur
+) {
 
+    verifierDroitPublication(roleUtilisateur);
 
-        evenement.setStatut(StatutEvenement.BROUILLON);
+    Evenement evenement =
+            trouverEvenement(evenementId);
 
-        return evenementRepository.save(evenement);
-    }
+    verifierConditionsPublication(evenement);
 
+    evenement.setStatut(
+            StatutEvenement.PUBLIE
+    );
 
+    return evenementRepository.save(evenement);
+}
 
 
 
 
-    public Evenement publierEvenement(
-            Long evenementId,
-            RoleUtilisateur roleUtilisateur
-    ) {
 
-
-
-        verifierDroitPublication(roleUtilisateur);
-
-        Evenement evenement = trouverEvenement(evenementId);
-
-
-
-        if (evenement.getStatut() != StatutEvenement.BROUILLON) {
-            throw new IllegalStateException(
-                    "Seul un événement en BROUILLON peut être publié."
-            );
-        }
-
-
-
-
-
-        if (evenement.getSalle() == null
-                || evenement.getSalle().getId() == null
-                || !salleRepository.existsById(
-                        evenement.getSalle().getId()
-        )) {
-            throw new IllegalStateException(
-                    "La salle de l'événement n'existe plus."
-            );
-        }
-
-
-
-        verifierTitre(evenement.getTitre());
-
-        
-        verifierDateEvenementPourPublication(
-                evenement.getDateEvenement()
-        );
-
-        
-        verifierDateOuvertureVentes(
-                evenement.getDateOuvertureVentes(),
-                evenement.getDateEvenement()
-        );
-
-
-
-
-        List<CategoriePrix> categories =
-                categoriePrixRepository.findByEvenementId(evenementId);
-
-
-
-        if (categories.isEmpty()) {
-
-            throw new IllegalStateException(
-                    "Impossible de publier l'événement : "
-                            + "aucune catégorie de prix n'est configurée."
-            );
-        }
-
-
-
-
-        if (!possedeDesPlaces(evenementId)) {
-            throw new IllegalStateException(
-                    "Impossible de publier l'événement : "
-                            + "aucune place n'est configurée."
-            );
-        }
-
-
-
-
-
-        
-        evenement.setStatut(StatutEvenement.PUBLIE);
-
-        return evenementRepository.save(evenement);
-    }
-
-
-
-
-    
     public Evenement changerStatut(
             Long evenementId,
             StatutEvenement nouveauStatut,
@@ -197,41 +139,31 @@ public class EvenementService {
 
         verifierDroitPublication(roleUtilisateur);
 
-
-        Evenement evenement = trouverEvenement(evenementId);
-
-
+        Evenement evenement =
+                trouverEvenement(evenementId);
 
         if (nouveauStatut == null) {
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Le nouveau statut est obligatoire."
             );
         }
 
-
-
-        StatutEvenement ancienStatut = evenement.getStatut();
-
+        StatutEvenement ancienStatut =
+                evenement.getStatut();
 
         verifierTransitionStatut(
                 ancienStatut,
                 nouveauStatut
         );
 
-
-
-
         if (nouveauStatut == StatutEvenement.PUBLIE) {
             verifierConditionsPublication(evenement);
         }
-
 
         if (nouveauStatut == StatutEvenement.TERMINE) {
             verifierFinEvenement(evenement);
         }
 
-
-        
         if (nouveauStatut == StatutEvenement.ANNULE) {
             verifierAnnulation(evenement);
         }
@@ -241,82 +173,116 @@ public class EvenementService {
         return evenementRepository.save(evenement);
     }
 
+   
 
 
 
 
+ public Evenement annulerEvenement(
+        Long evenementId,
+        RoleUtilisateur roleUtilisateur
+) {
+
+    verifierDroitPublication(roleUtilisateur);
+
+    Evenement evenement =
+            trouverEvenement(evenementId);
+
+    verifierAnnulation(evenement);
+
+    evenement.setStatut(
+            StatutEvenement.ANNULE
+    );
+
+    return evenementRepository.save(evenement);
+}
 
 
-    public Evenement annulerEvenement(
-            Long evenementId,
-            RoleUtilisateur roleUtilisateur
-    ) {
-
-
-
-        verifierDroitPublication(roleUtilisateur);
-
-        Evenement evenement = trouverEvenement(evenementId);
-
-        verifierAnnulation(evenement);
-
-        evenement.setStatut(StatutEvenement.ANNULE);
-
-       
-
-        return evenementRepository.save(evenement);
-    }
 
 
 
 
 
     @Transactional(readOnly = true)
-    public Evenement trouverEvenement(Long evenementId) {
+    public Evenement trouverEvenement(
+            Long evenementId
+    ) {
 
         if (evenementId == null) {
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "L'identifiant de l'événement est obligatoire."
             );
         }
 
         return evenementRepository.findById(evenementId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Événement introuvable."
-                ));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Événement introuvable."
+                        )
+                );
     }
 
+    @Transactional(readOnly = true)
+    public List<Evenement> listerEvenements() {
+        return evenementRepository.findAll();
+    }
 
+    @Transactional(readOnly = true)
+    public List<Evenement> listerEvenementsPublies() {
+        return evenementRepository.findByStatut(
+                StatutEvenement.PUBLIE
+        );
+    }
 
+    @Transactional(readOnly = true)
+    public List<Evenement> listerEvenementsParSalle(
+            Long salleId
+    ) {
 
-    private boolean possedeDesPlaces(Long evenementId) {
+        if (salleId == null) {
+            throw new BusinessException(
+                    "L'identifiant de la salle est obligatoire."
+            );
+        }
+
+        return evenementRepository.findBySalleId(salleId);
+    }
+
+    private boolean possedeDesPlaces(
+            Long evenementId
+    ) {
 
         return !placeRepository
                 .findByEvenementId(evenementId)
                 .isEmpty();
     }
 
-
-
     private void verifierConditionsPublication(
             Evenement evenement
     ) {
 
-        if (evenement.getStatut() != StatutEvenement.BROUILLON) {
-            throw new IllegalStateException(
-                    "Seul un événement en BROUILLON peut être publié."
+        if (evenement.getStatut()
+                != StatutEvenement.BROUILLON) {
+
+            throw new BusinessException(
+                    "Seul un événement en BROUILLON "
+                            + "peut être publié."
             );
         }
 
-        verifierTitre(evenement.getTitre());
+        verifierTitre(
+                evenement.getTitre()
+        );
 
         if (evenement.getSalle() == null
                 || evenement.getSalle().getId() == null
                 || !salleRepository.existsById(
                         evenement.getSalle().getId()
-        )) {
-            throw new IllegalStateException(
-                    "La salle de l'événement n'existe plus."
+                )) {
+
+            throw new ResourceNotFoundException(
+                    "La salle de l'événement "
+                            + "n'existe plus."
             );
         }
 
@@ -330,32 +296,33 @@ public class EvenementService {
         );
 
         List<CategoriePrix> categories =
-                categoriePrixRepository.findByEvenementId(
-                        evenement.getId()
-                );
+                categoriePrixRepository
+                        .findByEvenementId(
+                                evenement.getId()
+                        );
 
         if (categories.isEmpty()) {
-            throw new IllegalStateException(
-                    "Aucune catégorie de prix n'est configurée."
+
+            throw new BusinessException(
+                    "Impossible de publier l'événement : "
+                            + "aucune catégorie de prix "
+                            + "n'est configurée."
             );
         }
 
         if (!possedeDesPlaces(evenement.getId())) {
-            throw new IllegalStateException(
-                    "Aucune place n'est configurée."
+
+            throw new BusinessException(
+                    "Impossible de publier l'événement : "
+                            + "aucune place n'est configurée."
             );
         }
     }
-
-
-
 
     private void verifierTransitionStatut(
             StatutEvenement ancienStatut,
             StatutEvenement nouveauStatut
     ) {
-
-
 
         boolean transitionAutorisee =
                 (ancienStatut == StatutEvenement.BROUILLON
@@ -371,7 +338,8 @@ public class EvenementService {
                         && nouveauStatut == StatutEvenement.TERMINE);
 
         if (!transitionAutorisee) {
-            throw new IllegalStateException(
+
+            throw new BusinessException(
                     "Transition de statut interdite : "
                             + ancienStatut
                             + " -> "
@@ -380,103 +348,108 @@ public class EvenementService {
         }
     }
 
+    private void verifierAnnulation(
+            Evenement evenement
+    ) {
 
+        if (evenement.getStatut()
+                == StatutEvenement.TERMINE) {
 
-
-    private void verifierAnnulation(Evenement evenement) {
-
-        if (evenement.getStatut() == StatutEvenement.TERMINE) {
-            throw new IllegalStateException(
-                    "Un événement terminé ne peut pas être annulé."
+            throw new BusinessException(
+                    "Un événement terminé "
+                            + "ne peut pas être annulé."
             );
         }
 
-        if (evenement.getStatut() == StatutEvenement.ANNULE) {
-            throw new IllegalStateException(
+        if (evenement.getStatut()
+                == StatutEvenement.ANNULE) {
+
+            throw new BusinessException(
                     "L'événement est déjà annulé."
             );
         }
-
-     
     }
 
-
-
-
-
-    private void verifierFinEvenement(Evenement evenement) {
+    private void verifierFinEvenement(
+            Evenement evenement
+    ) {
 
         if (evenement.getDateEvenement() == null) {
-            throw new IllegalStateException(
-                    "La date de l'événement est obligatoire."
+
+            throw new BusinessException(
+                    "La date de l'événement "
+                            + "est obligatoire."
             );
         }
 
-        if (evenement.getDateEvenement().isAfter(
-                OffsetDateTime.now()
-        )) {
-            throw new IllegalStateException(
-                    "Un événement ne peut pas être terminé "
-                            + "avant sa date."
+        if (evenement.getDateEvenement()
+                .isAfter(OffsetDateTime.now())) {
+
+            throw new BusinessException(
+                    "Un événement ne peut pas être "
+                            + "terminé avant sa date."
             );
         }
     }
-
-
-
-
-
 
     private void verifierTitre(String titre) {
 
-        if (titre == null || titre.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Le titre de l'événement est obligatoire."
+        if (titre == null
+                || titre.trim().isEmpty()) {
+
+            throw new BusinessException(
+                    "Le titre de l'événement "
+                            + "est obligatoire."
             );
         }
     }
 
-   
     private void verifierDateEvenementPourCreation(
             OffsetDateTime dateEvenement
     ) {
 
-
-
         if (dateEvenement == null) {
-            throw new IllegalArgumentException(
-                    "La date de l'événement est obligatoire."
+
+            throw new BusinessException(
+                    "La date de l'événement "
+                            + "est obligatoire."
             );
         }
 
-        if (!dateEvenement.isAfter(OffsetDateTime.now())) {
-            throw new IllegalArgumentException(
-                    "La date de l'événement doit être dans le futur."
+        if (!dateEvenement.isAfter(
+                OffsetDateTime.now()
+        )) {
+
+            throw new BusinessException(
+                    "La date de l'événement "
+                            + "doit être dans le futur."
             );
         }
     }
 
-  
     private void verifierDateEvenementPourPublication(
             OffsetDateTime dateEvenement
     ) {
 
         if (dateEvenement == null) {
-            throw new IllegalArgumentException(
-                    "La date de l'événement est obligatoire."
+
+            throw new BusinessException(
+                    "La date de l'événement "
+                            + "est obligatoire."
             );
         }
 
-        if (!dateEvenement.isAfter(OffsetDateTime.now())) {
-            throw new IllegalStateException(
-                    "La date de l'événement doit encore être dans le futur."
+        if (!dateEvenement.isAfter(
+                OffsetDateTime.now()
+        )) {
+
+            throw new BusinessException(
+                    "La date de l'événement "
+                            + "doit encore être dans le futur."
             );
         }
     }
 
-
-
-    
     private void verifierDateOuvertureVentes(
             OffsetDateTime dateOuvertureVentes,
             OffsetDateTime dateEvenement
@@ -487,21 +460,24 @@ public class EvenementService {
         }
 
         if (dateEvenement == null) {
-            throw new IllegalArgumentException(
-                    "La date de l'événement est obligatoire."
+
+            throw new BusinessException(
+                    "La date de l'événement "
+                            + "est obligatoire."
             );
         }
 
-        if (!dateOuvertureVentes.isBefore(dateEvenement)) {
-            throw new IllegalArgumentException(
-                    "La date d'ouverture des ventes doit être "
-                            + "avant la date de l'événement."
+        if (!dateOuvertureVentes.isBefore(
+                dateEvenement
+        )) {
+
+            throw new BusinessException(
+                    "La date d'ouverture des ventes "
+                            + "doit être avant la date "
+                            + "de l'événement."
             );
         }
     }
-
-
-
 
     private void verifierDroitOrganisateur(
             RoleUtilisateur roleUtilisateur
@@ -510,15 +486,12 @@ public class EvenementService {
         if (roleUtilisateur != RoleUtilisateur.ORGANISATEUR
                 && roleUtilisateur != RoleUtilisateur.ADMIN) {
 
-            throw new SecurityException(
-                    "Seuls un ORGANISATEUR ou un ADMIN peuvent "
-                            + "gérer les événements."
+            throw new BusinessException(
+                    "Seuls un ORGANISATEUR ou un ADMIN "
+                            + "peuvent gérer les événements."
             );
         }
     }
-
-
-
 
     private void verifierDroitPublication(
             RoleUtilisateur roleUtilisateur
@@ -527,27 +500,30 @@ public class EvenementService {
         if (roleUtilisateur != RoleUtilisateur.ORGANISATEUR
                 && roleUtilisateur != RoleUtilisateur.ADMIN) {
 
-            throw new SecurityException(
-                    "Seuls un ORGANISATEUR ou un ADMIN peuvent "
-                            + "modifier le statut d'un événement."
+            throw new BusinessException(
+                    "Seuls un ORGANISATEUR ou un ADMIN "
+                            + "peuvent modifier le statut "
+                            + "d'un événement."
             );
         }
     }
 
-
-
-
-    private Salle trouverSalle(Long salleId) {
+    private Salle trouverSalle(
+            Long salleId
+    ) {
 
         if (salleId == null) {
-            throw new IllegalArgumentException(
+
+            throw new BusinessException(
                     "La salle est obligatoire."
             );
         }
 
         return salleRepository.findById(salleId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Salle introuvable."
-                ));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Salle introuvable."
+                        )
+                );
     }
 }

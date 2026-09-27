@@ -1,5 +1,7 @@
 package com.example.concert_booking_api.metier.salle;
 
+import com.example.concert_booking_api.core.exception.BusinessException;
+import com.example.concert_booking_api.core.exception.ResourceNotFoundException;
 import com.example.concert_booking_api.dao.entity.Evenement;
 import com.example.concert_booking_api.dao.entity.Salle;
 import com.example.concert_booking_api.dao.enums.StatutEvenement;
@@ -29,7 +31,6 @@ public class SalleService {
         this.evenementRepository = evenementRepository;
     }
 
-   
     public Salle creerSalle(
             String nom,
             String adresse,
@@ -57,9 +58,6 @@ public class SalleService {
         return salleRepository.save(salle);
     }
 
-
-
-
     public Salle modifierSalle(
             Long salleId,
             String nom,
@@ -79,120 +77,83 @@ public class SalleService {
                 capacite
         );
 
-
-
-       
         long nombreSieges =
-                siegeRepository.findBySalleId(salleId).size();
+                siegeRepository
+                        .findBySalleId(salleId)
+                        .size();
 
         if (capacite < nombreSieges) {
-            throw new IllegalStateException(
+
+            throw new BusinessException(
                     "La capacité ne peut pas être inférieure "
                             + "au nombre de sièges configurés."
             );
         }
 
-
-
         salle.setNom(nom.trim());
         salle.setAdresse(adresse.trim());
-
-
         salle.setVille(ville.trim());
-
-
         salle.setCodePostal(codePostal.trim());
-
-
-
-
-
-
-
-
-
         salle.setCapacite(capacite);
 
         return salleRepository.save(salle);
     }
 
-
-
-
-
-
-    
-    public void supprimerSalle(Long salleId) {
+    public void supprimerSalle(
+            Long salleId
+    ) {
 
         Salle salle = trouverSalle(salleId);
 
-     
         List<Evenement> evenements =
-                evenementRepository.findBySalleId(salleId);
+                evenementRepository.findBySalleId(
+                        salleId
+                );
 
         for (Evenement evenement : evenements) {
 
-            StatutEvenement statut = evenement.getStatut();
+            StatutEvenement statut =
+                    evenement.getStatut();
 
             if (statut == StatutEvenement.PUBLIE
                     || statut == StatutEvenement.BROUILLON) {
 
-                throw new IllegalStateException(
+                throw new BusinessException(
                         "Impossible de supprimer cette salle : "
                                 + "elle est utilisée par un événement."
                 );
             }
         }
 
-
-
-
-
-
-
-
-
         salleRepository.delete(salle);
     }
 
-
-
-
-
-
-
-
-
     @Transactional(readOnly = true)
-    public Salle trouverSalle(Long salleId) {
-
-
-
+    public Salle trouverSalle(
+            Long salleId
+    ) {
 
         if (salleId == null) {
 
-
-
-            throw new IllegalArgumentException(
-                    "L'identifiant de la salle est obligatoire."
+            throw new BusinessException(
+                    "L'identifiant de la salle "
+                            + "est obligatoire."
             );
         }
 
-
-
-
-        return salleRepository.findById(salleId)
-                .orElseThrow(() -> new IllegalArgumentException(
+        return salleRepository.findById(
+                salleId
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
                         "Salle introuvable."
-                ));
+                )
+        );
     }
 
-
-
-
-
-
-
+    @Transactional(readOnly = true)
+    public List<Salle> listerSalles() {
+        return salleRepository.findAll();
+    }
 
     private void verifierInformationsSalle(
             String nom,
@@ -202,53 +163,48 @@ public class SalleService {
             Integer capacite
     ) {
 
+        if (nom == null
+                || nom.trim().isEmpty()) {
 
-        if (nom == null || nom.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Le nom de la salle est obligatoire."
+            throw new BusinessException(
+                    "Le nom de la salle "
+                            + "est obligatoire."
             );
         }
 
+        if (adresse == null
+                || adresse.trim().isEmpty()) {
 
-
-        if (adresse == null || adresse.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "L'adresse de la salle est obligatoire."
+            throw new BusinessException(
+                    "L'adresse de la salle "
+                            + "est obligatoire."
             );
         }
 
+        if (ville == null
+                || ville.trim().isEmpty()) {
 
-
-
-        if (ville == null || ville.trim().isEmpty()) {
-
-
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "La ville est obligatoire."
             );
         }
 
+        if (codePostal == null
+                || codePostal.trim().isEmpty()) {
 
-
-
-
-
-
-        if (codePostal == null || codePostal.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Le code postal est obligatoire."
+            throw new BusinessException(
+                    "Le code postal "
+                            + "est obligatoire."
             );
         }
 
+        if (capacite == null
+                || capacite <= 0) {
 
-
-
-
-        if (capacite == null || capacite <= 0) {
-            throw new IllegalArgumentException(
-                    "La capacité de la salle doit être strictement positive."
+            throw new BusinessException(
+                    "La capacité de la salle doit être "
+                            + "strictement positive."
             );
         }
     }
 }
-
