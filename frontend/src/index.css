@@ -1,0 +1,387 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap");
+
+:root {
+  --bg: #0e0b12;
+  --surface: #18141f;
+  --surface-raised: #211b2c;
+  --text: #f3eee9;
+  --text-muted: #9c93a8;
+  --accent-cyan: #2fe0c8;
+  --accent-pink: #ff3d7f;
+  --border: #2c2536;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Fraunces", serif;
+  margin: 0 0 0.4em;
+  line-height: 1.1;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+input {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+.app-main {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.state-message {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 60px 0;
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.navbar__brand {
+  font-family: "Fraunces", serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.navbar__brand span {
+  color: var(--accent-cyan);
+}
+
+.navbar__links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.navbar__link {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.navbar__link--accent {
+  color: var(--bg);
+  background: var(--accent-cyan);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.navbar__link--ghost {
+  color: var(--accent-pink);
+}
+
+/* Boutons */
+.btn {
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn--accent {
+  background: var(--accent-cyan);
+  color: var(--bg);
+  font-weight: 600;
+  border: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Authentification */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-card__subtitle {
+  color: var(--text-muted);
+  margin: -8px 0 8px;
+  font-size: 0.9rem;
+}
+
+.auth-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.auth-card input,
+.detail-page__form input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.auth-card__error {
+  color: var(--accent-pink);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.auth-card__footer {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+}
+
+.auth-card__footer a {
+  color: var(--accent-cyan);
+}
+
+/* Liste des concerts */
+.events-page__title {
+  font-size: 2.4rem;
+  margin-bottom: 32px;
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.ticket-card {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ticket-card:hover {
+  border-color: var(--accent-cyan);
+}
+
+.ticket-card__main {
+  flex: 1;
+  padding: 20px;
+}
+
+.ticket-card__date {
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+}
+
+.ticket-card__title {
+  font-size: 1.3rem;
+  margin: 8px 0 6px;
+}
+
+.ticket-card__desc {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ticket-card__stub {
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--surface-raised);
+  border-left: 1px dashed var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ticket-card__arrow {
+  color: var(--accent-pink);
+  font-size: 1.1rem;
+}
+
+/* Détail d'un concert */
+.detail-page {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 40px;
+}
+
+.detail-page__poster h1 {
+  font-size: 2.6rem;
+}
+
+.detail-page__date {
+  color: var(--accent-cyan);
+  font-size: 0.9rem;
+}
+
+.detail-page__poster p {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.detail-page__form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-page__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.detail-page__hint {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+/* Paiement : billet avec souche */
+.checkout-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 24px;
+}
+
+.stub-ticket {
+  display: flex;
+  width: 100%;
+  max-width: 720px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.stub-ticket__main {
+  flex: 1.4;
+  padding: 32px;
+}
+
+.stub-ticket__label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stub-ticket__main h1 {
+  font-size: 1.6rem;
+  margin-top: 6px;
+}
+
+.stub-ticket__amount {
+  font-family: "Fraunces", serif;
+  font-size: 2.8rem;
+  color: var(--accent-cyan);
+  margin: 12px 0 4px;
+}
+
+.stub-ticket__meta {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.stub-ticket__perforation {
+  width: 0;
+  border-left: 2px dashed var(--border);
+}
+
+.stub-ticket__action {
+  flex: 1;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  background: var(--surface-raised);
+}
+
+.stub-ticket__success {
+  color: var(--accent-cyan);
+  font-weight: 600;
+  margin: 0;
+}
+
+.stub-ticket__transaction {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0;
+  word-break: break-all;
+}
+
+/* Mobile */
+@media (max-width: 720px) {
+  .detail-page {
+    grid-template-columns: 1fr;
+  }
+
+  .stub-ticket {
+    flex-direction: column;
+  }
+
+  .stub-ticket__perforation {
+    border-left: none;
+    border-top: 2px dashed var(--border);
+  }
+}

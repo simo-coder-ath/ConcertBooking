@@ -12,6 +12,8 @@ import com.example.concert_booking_api.dao.repository.CommandeRepository;
 import com.example.concert_booking_api.dao.repository.FactureRepository;
 import com.example.concert_booking_api.dao.repository.LigneCommandeRepository;
 import com.example.concert_booking_api.dao.repository.PlaceRepository;
+import com.example.concert_booking_api.metier.commande.CommandeEventPublisher;
+import com.example.concert_booking_api.metier.commande.dto.CommandePayeeEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,19 +30,22 @@ public class PaiementService {
     private final LigneCommandeRepository ligneCommandeRepository;
     private final PlaceRepository placeRepository;
     private final PaymentProviderClient paymentProviderClient;
+    private final CommandeEventPublisher commandeEventPublisher;
 
     public PaiementService(
             CommandeRepository commandeRepository,
             FactureRepository factureRepository,
             LigneCommandeRepository ligneCommandeRepository,
             PlaceRepository placeRepository,
-            PaymentProviderClient paymentProviderClient
+            PaymentProviderClient paymentProviderClient,
+            CommandeEventPublisher commandeEventPublisher
     ) {
         this.commandeRepository = commandeRepository;
         this.factureRepository = factureRepository;
         this.ligneCommandeRepository = ligneCommandeRepository;
         this.placeRepository = placeRepository;
         this.paymentProviderClient = paymentProviderClient;
+        this.commandeEventPublisher = commandeEventPublisher;
     }
 
     public Facture payerCommande(
@@ -231,6 +236,8 @@ public class PaiementService {
                         .orElse(null);
 
         if (factureExistante != null) {
+            // Rejeu du même transactionId : on ne republie pas
+            // l'événement pour éviter un doublon d'email.
             return factureExistante;
         }
 
@@ -317,7 +324,36 @@ public class PaiementService {
 
         facture.setPdfTicketUrl(null);
 
-        return factureRepository.save(facture);
+        Facture factureEnregistree =
+                factureRepository.save(facture);
+
+        publierEvenementCommandePayee(
+                commande,
+                factureEnregistree
+        );
+
+        return factureEnregistree;
+    }
+
+    private void publierEvenementCommandePayee(
+            Commande commande,
+            Facture facture
+    ) {
+
+        if (commande.getUtilisateur() == null) {
+            return;
+        }
+
+        CommandePayeeEvent event = new CommandePayeeEvent(
+                commande.getId(),
+                commande.getReference(),
+                commande.getUtilisateur().getEmail(),
+                commande.getUtilisateur().getPrenom(),
+                facture.getMontantRegle(),
+                facture.getPdfTicketUrl()
+        );
+
+        commandeEventPublisher.publierCommandePayee(event);
     }
 
     private void traiterEchecPaiement(
